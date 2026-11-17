@@ -134,7 +134,8 @@ def initialize(project):
     for source in (TOOL / "templates").rglob("*.md"):
         target = root / source.relative_to(TOOL / "templates")
         if not target.exists():
-            write_changed(target, deck([], config).replace("# Generated: edit intro.md / section-*.md and steslide.json.\n", ""))
+            text = deck([], config).replace("# Generated: edit intro.md / section-*.md and steslide.json.\n", "")
+            write_changed(target, text.rstrip() + "\n")
     relative_root = root.relative_to(project).as_posix()
     ignored = ["__pycache__/", "*.py[cod]", f"/{relative_root}/.build/",
                f"/{relative_root}/lecture-*/lecture.md",
