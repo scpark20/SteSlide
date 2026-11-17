@@ -1,0 +1,86 @@
+import importlib.util
+from pathlib import Path
+import shutil
+import tempfile
+import unittest
+
+spec = importlib.util.spec_from_file_location("steslide", Path(__file__).resolve().parents[1] / "steslide.py")
+slides = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(slides)
+
+
+class BuildTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.project = Path(self.temp.name).resolve()
+        slides.initialize(self.project)
+        self.lecture = self.project / "lectures/lecture-01"
+        self.chapter = self.lecture / "chapter-01"
+
+    def test_blank_template_has_no_content(self):
+        output = slides.build(self.project, "lecture-01")
+        self.assertEqual(slides.body(output), "")
+        for source in slides.source_files(self.lecture):
+            self.assertEqual(slides.body(source), "")
+
+    def test_parent_order_and_code_block_are_preserved(self):
+        (self.lecture / "intro.md").write_text("# Lecture", encoding="utf-8")
+        (self.chapter / "intro.md").write_text("# Chapter", encoding="utf-8")
+        (self.chapter / "section-02.md").write_text("# Second", encoding="utf-8")
+        code = '# First\n\n```python\nprint("---")\n```'
+        (self.chapter / "section-01.md").write_text("---\nmarp: true\n---\n" + code, encoding="utf-8")
+        output = slides.build(self.project, "lecture-01")
+        self.assertEqual(slides.body(output), "\n\n---\n\n".join(["# Lecture", "# Chapter", code, "# Second"]))
+        self.assertEqual(slides.body(self.chapter / "chapter.md"), "\n\n---\n\n".join(["# Chapter", code, "# Second"]))
+
+    def test_empty_intro_does_not_add_slides(self):
+        (self.chapter / "section-01.md").write_text("# Only slide", encoding="utf-8")
+        self.assertEqual(slides.body(slides.build(self.project, "lecture-01")), "# Only slide")
+
+    def test_invalid_edit_preserves_all_generated_outputs(self):
+        output = slides.build(self.project, "lecture-01")
+        before = output.read_bytes()
+        chapter_before = (self.chapter / "chapter.md").read_bytes()
+        (self.chapter / "section-01.md").write_text("---\nmarp: true\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Unclosed"):
+            slides.build(self.project, "lecture-01")
+        self.assertEqual(output.read_bytes(), before)
+        self.assertEqual((self.chapter / "chapter.md").read_bytes(), chapter_before)
+
+    def test_unchanged_build_does_not_trigger_reload(self):
+        output = slides.build(self.project, "lecture-01")
+        timestamp = output.stat().st_mtime_ns
+        slides.build(self.project, "lecture-01")
+        self.assertEqual(output.stat().st_mtime_ns, timestamp)
+
+    def test_deleted_chapter_is_removed_from_preview(self):
+        output = slides.build(self.project, "lecture-01")
+        shutil.rmtree(self.chapter)
+        slides.build(self.project, "lecture-01")
+        self.assertFalse((output.parent / "chapter-01.md").exists())
+
+    def test_watch_signature_detects_added_and_deleted_sources(self):
+        before = slides.signature(self.project, "lecture-01")
+        extra = self.chapter / "section-02.md"
+        extra.write_text("# Added", encoding="utf-8")
+        self.assertNotEqual(slides.signature(self.project, "lecture-01"), before)
+        extra.unlink()
+        self.assertEqual(slides.signature(self.project, "lecture-01"), before)
+
+    def test_init_preserves_existing_sources_and_vscode_settings(self):
+        source = self.chapter / "section-01.md"
+        source.write_text("# User content", encoding="utf-8")
+        settings = self.project / ".vscode/settings.json"
+        settings.write_text('{"user": true}', encoding="utf-8")
+        slides.initialize(self.project)
+        self.assertEqual(source.read_text(), "# User content")
+        self.assertEqual(settings.read_text(), '{"user": true}')
+
+    def test_lecture_path_cannot_escape_root(self):
+        with self.assertRaises(ValueError):
+            slides.build(self.project, "../outside")
+
+
+if __name__ == "__main__":
+    unittest.main()
