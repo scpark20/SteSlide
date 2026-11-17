@@ -40,3 +40,7 @@ section.references { font-size: 24px; }
 section.chapter { background: #e4edf6; justify-content: center; }
 section.chapter h1 { font-size: 56px; }
 section.chapter h2 { font-size: 27px; color: #536d84; }
+section.code { padding: 32px 48px; }
+section.code h1 { font-size: 34px; margin-bottom: 12px; }
+section.code pre { margin: 10px 0; padding: 12px 18px; }
+section.code pre code { font-size: 16px; line-height: 1.25; }

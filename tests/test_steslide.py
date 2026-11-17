@@ -15,11 +15,11 @@ class BuildTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.project = Path(self.temp.name).resolve()
         slides.initialize(self.project)
-        self.lecture = self.project / "lectures/lecture-01"
+        self.lecture = self.project / "lectures"
         self.chapter = self.lecture / "chapter-01"
 
     def test_blank_template_has_no_content(self):
-        output = slides.build(self.project, "lecture-01")
+        output = slides.build(self.project)
         self.assertEqual(slides.body(output), "")
         for source in slides.source_files(self.lecture):
             self.assertEqual(slides.body(source), "")
@@ -30,43 +30,43 @@ class BuildTests(unittest.TestCase):
         (self.chapter / "section-02.md").write_text("# Second", encoding="utf-8")
         code = '# First\n\n```python\nprint("---")\n```'
         (self.chapter / "section-01.md").write_text("---\nmarp: true\n---\n" + code, encoding="utf-8")
-        output = slides.build(self.project, "lecture-01")
+        output = slides.build(self.project)
         self.assertEqual(slides.body(output), "\n\n---\n\n".join(["# Lecture", "# Chapter", code, "# Second"]))
         self.assertEqual(slides.body(self.chapter / "chapter.md"), "\n\n---\n\n".join(["# Chapter", code, "# Second"]))
 
     def test_empty_intro_does_not_add_slides(self):
         (self.chapter / "section-01.md").write_text("# Only slide", encoding="utf-8")
-        self.assertEqual(slides.body(slides.build(self.project, "lecture-01")), "# Only slide")
+        self.assertEqual(slides.body(slides.build(self.project)), "# Only slide")
 
     def test_invalid_edit_preserves_all_generated_outputs(self):
-        output = slides.build(self.project, "lecture-01")
+        output = slides.build(self.project)
         before = output.read_bytes()
         chapter_before = (self.chapter / "chapter.md").read_bytes()
         (self.chapter / "section-01.md").write_text("---\nmarp: true\n", encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "Unclosed"):
-            slides.build(self.project, "lecture-01")
+            slides.build(self.project)
         self.assertEqual(output.read_bytes(), before)
         self.assertEqual((self.chapter / "chapter.md").read_bytes(), chapter_before)
 
     def test_unchanged_build_does_not_trigger_reload(self):
-        output = slides.build(self.project, "lecture-01")
+        output = slides.build(self.project)
         timestamp = output.stat().st_mtime_ns
-        slides.build(self.project, "lecture-01")
+        slides.build(self.project)
         self.assertEqual(output.stat().st_mtime_ns, timestamp)
 
     def test_deleted_chapter_is_removed_from_preview(self):
-        output = slides.build(self.project, "lecture-01")
+        output = slides.build(self.project)
         shutil.rmtree(self.chapter)
-        slides.build(self.project, "lecture-01")
+        slides.build(self.project)
         self.assertFalse((output.parent / "chapter-01.md").exists())
 
     def test_watch_signature_detects_added_and_deleted_sources(self):
-        before = slides.signature(self.project, "lecture-01")
+        before = slides.signature(self.project)
         extra = self.chapter / "section-02.md"
         extra.write_text("# Added", encoding="utf-8")
-        self.assertNotEqual(slides.signature(self.project, "lecture-01"), before)
+        self.assertNotEqual(slides.signature(self.project), before)
         extra.unlink()
-        self.assertEqual(slides.signature(self.project, "lecture-01"), before)
+        self.assertEqual(slides.signature(self.project), before)
 
     def test_init_preserves_existing_sources_and_vscode_settings(self):
         source = self.chapter / "section-01.md"
@@ -80,6 +80,28 @@ class BuildTests(unittest.TestCase):
     def test_lecture_path_cannot_escape_root(self):
         with self.assertRaises(ValueError):
             slides.build(self.project, "../outside")
+
+    def test_python_source_is_included_and_watched(self):
+        source = self.chapter / "agent.py"
+        source.write_text('def hello():\n    return "Hello"\n', encoding="utf-8")
+        (self.chapter / "section-01.md").write_text('<!-- code: agent.py#hello -->', encoding="utf-8")
+        before = slides.signature(self.project)
+        self.assertIn('return "Hello"', slides.build(self.project).read_text())
+        source.write_text('def hello():\n    return "Updated"\n', encoding="utf-8")
+        self.assertNotEqual(before, slides.signature(self.project))
+        self.assertIn('return "Updated"', slides.build(self.project).read_text())
+
+    def test_code_include_cannot_escape_chapter(self):
+        (self.chapter / "section-01.md").write_text('<!-- code: ../secret.py -->', encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "inside"):
+            slides.build(self.project)
+
+    def test_explicit_multiple_lecture_layout_still_works(self):
+        nested = self.lecture / "lecture-02"
+        nested.mkdir()
+        (nested / "intro.md").write_text('# Another lecture', encoding="utf-8")
+        output = slides.build(self.project, "lecture-02")
+        self.assertEqual(slides.body(output), '# Another lecture')
 
 
 if __name__ == "__main__":

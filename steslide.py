@@ -2,13 +2,16 @@
 """Reusable Markdown → Lecture/Chapter → Marp live preview."""
 
 import argparse
+import ast
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import signal
 import subprocess
 import sys
+import textwrap
 import time
 
 TOOL = Path(__file__).resolve().parent
@@ -28,7 +31,11 @@ def settings(project):
     return config, root, theme
 
 
-def lecture_path(root, name):
+def lecture_path(root, name=None):
+    if name in (None, "."):
+        if (root / "intro.md").is_file() or any(root.glob("chapter-*")):
+            return root
+        name = "lecture-01"
     path = root / name
     if Path(name).name != name or not path.is_dir():
         raise ValueError(f"Lecture not found: {name}")
@@ -55,9 +62,27 @@ def body(path):
     if lines and lines[0].strip() == "---":
         for index in range(1, len(lines)):
             if lines[index].strip() == "---":
-                return "".join(lines[index + 1:]).strip()
-        raise ValueError(f"Unclosed YAML front matter: {path}")
-    return text.strip()
+                text = "".join(lines[index + 1:])
+                break
+        else:
+            raise ValueError(f"Unclosed YAML front matter: {path}")
+    def include(match):
+        filename, _, symbol = match.group(1).partition("#")
+        source = (path.parent / filename).resolve()
+        if source.suffix != ".py" or not source.is_relative_to(path.parent.resolve()):
+            raise ValueError(f"Code include must be a Python file inside {path.parent}")
+        code = source.read_text(encoding="utf-8")
+        if symbol:
+            try:
+                nodes = ast.walk(ast.parse(code))
+            except SyntaxError as error:
+                raise ValueError(f"Invalid Python include: {source}") from error
+            node = next((node for node in nodes if getattr(node, "name", None) == symbol), None)
+            if node is None:
+                raise ValueError(f"Python symbol not found: {source}#{symbol}")
+            code = textwrap.dedent("\n".join(code.splitlines()[node.lineno - 1:node.end_lineno]))
+        return "```python\n" + code.rstrip() + "\n```"
+    return re.sub(r"<!--\s*code:\s*(\S+)\s*-->", include, text).strip()
 
 
 def deck(parts, config):
@@ -77,10 +102,12 @@ def write_changed(path, content):
     temporary.replace(path)
 
 
-def build(project, name):
+def build(project, name=None):
     config, root, _ = settings(project)
     lecture = lecture_path(root, name)
-    output = root / ".build" / name
+    output = root / ".build"
+    if lecture != root:
+        output /= lecture.name
     parts = [body(lecture / "intro.md")]
     pending = {}
     expected = set()
@@ -105,9 +132,10 @@ def build(project, name):
     return output / "lecture.md"
 
 
-def signature(project, name):
+def signature(project, name=None):
     _, root, theme = settings(project)
-    paths = [project / "steslide.json", theme, *source_files(lecture_path(root, name))]
+    lecture = lecture_path(root, name)
+    paths = [project / "steslide.json", theme, *source_files(lecture), *sorted(lecture.rglob("*.py"))]
     result = []
     for path in paths:
         stat = path.stat() if path.exists() else None
@@ -131,13 +159,16 @@ def initialize(project):
     if not config_file.exists():
         write_changed(config_file, json.dumps(DEFAULTS, ensure_ascii=False, indent=2) + "\n")
     config, root, theme = settings(project)
-    for source in (TOOL / "templates").rglob("*.md"):
-        target = root / source.relative_to(TOOL / "templates")
+    template = TOOL / "templates" / "lecture-01"
+    destination = root / "lecture-01" if (root / "lecture-01").is_dir() and not (root / "intro.md").exists() else root
+    for source in template.rglob("*.md"):
+        target = destination / source.relative_to(template)
         if not target.exists():
             text = deck([], config).replace("# Generated: edit intro.md / section-*.md and steslide.json.\n", "")
             write_changed(target, text.rstrip() + "\n")
     relative_root = root.relative_to(project).as_posix()
     ignored = ["__pycache__/", "*.py[cod]", f"/{relative_root}/.build/",
+               f"/{relative_root}/lecture.md", f"/{relative_root}/chapter-*/chapter.md",
                f"/{relative_root}/lecture-*/lecture.md",
                f"/{relative_root}/lecture-*/chapter-*/chapter.md"]
     ignore_file = project / ".gitignore"
@@ -154,7 +185,7 @@ def initialize(project):
         target = vscode / filename
         if not target.exists():
             write_changed(target, json.dumps(defaults, indent=2) + "\n")
-    build(project, "lecture-01")
+    build(project)
     print(f"Initialized blank slides in {root}. Existing sources and VS Code settings were preserved.")
 
 
@@ -217,7 +248,7 @@ def main():
     commands.add_parser("init", help="Create blank sources; preserve existing source files")
     for command in ("build", "watch", "preview", "export"):
         sub = commands.add_parser(command)
-        sub.add_argument("--lecture", default="lecture-01")
+        sub.add_argument("--lecture", help="Optional subdirectory for projects containing multiple lectures")
         if command == "preview":
             sub.add_argument("--port", type=int, default=8766)
         if command == "export":

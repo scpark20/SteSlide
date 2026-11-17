@@ -42,14 +42,14 @@ python3 tools/steslide/steslide.py build
 python3 tools/steslide/steslide.py watch
 
 # Start the browser preview
-python3 tools/steslide/steslide.py preview --lecture lecture-01 --port 8766
+python3 tools/steslide/steslide.py preview --port 8766
 
 # Export
 python3 tools/steslide/steslide.py export --format html
 python3 tools/steslide/steslide.py export --format pdf
 ```
 
-Exports default to `lectures/.build/lecture-01/lecture.html` or `lecture.pdf`. Change the destination with `--output <path>`.
+Exports default to `lectures/.build/lecture.html` or `lecture.pdf`. Change the destination with `--output <path>`.
 
 PDF export requires Chrome, Edge, or Firefox. If detection fails, specify a browser explicitly with `--browser firefox --browser-path /path/to/firefox`.
 

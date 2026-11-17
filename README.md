@@ -43,7 +43,7 @@ python3 tools/steslide/steslide.py init
 python3 tools/steslide/steslide.py preview
 ```
 
-Open **[localhost:8766/lecture.md](http://localhost:8766/lecture.md)** and edit `lectures/lecture-01/chapter-01/section-01.md`. To edit through chat, use a coding assistant with access to your project files.
+Open **[localhost:8766/lecture.md](http://localhost:8766/lecture.md)** and edit `lectures/chapter-01/section-01.md`. To edit through chat, use a coding assistant with access to your project files.
 
 For Remote SSH, VS Code preview, PDF export, and command options, see the [usage guide](docs/usage.md).
 
