@@ -1,8 +1,9 @@
-# SteSlide 작업 규칙
+# Working on SteSlide
 
-- 이 저장소에는 재사용 가능한 슬라이드 도구와 빈 템플릿을 둡니다.
-- 강의 내용은 사용하는 프로젝트의 `lectures/`에 두고 사용자가 요청한 내용만 추가합니다. 예시 강의나 목차를 임의로 채우지 않습니다.
-- `lecture.md`, `chapter.md`, `.build/`는 생성물입니다. 원본인 `intro.md`, `section-*.md`를 수정합니다.
-- 공통 생성기·테마·설치 방식의 변경은 SteSlide 저장소에 반영합니다. 사용하는 프로젝트에 도구를 복사하거나 별도 구현하지 않습니다.
-- 서브모듈로 사용 중이면 수정 전에 Git 상태와 브랜치를 확인합니다. 푸시 요청을 받으면 SteSlide 변경을 먼저 커밋·푸시하고, 사용하는 프로젝트의 서브모듈 버전도 기록합니다. 요청과 무관한 변경을 함께 커밋하지 않습니다.
-- 생성기를 수정하면 `python3 -m unittest discover -s tests -v`를 실행합니다. 미리보기 동작을 바꾸면 브라우저 갱신도 확인합니다.
+- Keep this repository focused on reusable slide tooling and blank templates.
+- Store lecture content in the consuming project's `lectures/` directory. Add only content requested by the user; do not invent lectures or outlines.
+- Write all published documentation, comments, CLI help, and other repository text in English.
+- Treat `lecture.md`, `chapter.md`, and `.build/` as generated output. Edit `intro.md` and `section-*.md` instead.
+- Make shared generator, theme, and installer changes in SteSlide. Do not copy the tool or create a competing implementation inside the consuming project.
+- When working through a submodule, inspect its Git status and branch first. When publication is requested, commit and push SteSlide changes before recording the new submodule version in the consuming project. Preserve unrelated changes.
+- After generator changes, run `python3 -m unittest discover -s tests -v`. Verify browser reloads when preview behavior changes.
