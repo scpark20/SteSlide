@@ -23,8 +23,10 @@ def main():
     system, machine = platform.system(), platform.machine().lower()
     if system == "Linux" and machine in ("x86_64", "amd64", "aarch64", "arm64"):
         target = "linux-arm64" if machine in ("aarch64", "arm64") else "linux"
-    elif system == "Darwin" and machine in ("x86_64", "arm64"):
+    elif system == "Darwin" and machine == "arm64":
         target = "mac"
+    elif system == "Darwin" and machine == "x86_64":
+        raise SystemExit("Intel Mac: install Node.js 18+ and run 'npm install -g @marp-team/marp-cli@4.5.1'. The standalone Mac binary requires Apple Silicon.")
     elif system == "Windows" and machine in ("amd64", "x86_64"):
         target = "win"
     else:

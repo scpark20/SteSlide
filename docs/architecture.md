@@ -77,3 +77,5 @@ Use `<!-- code: @code/chapter-04/agent.py#main[7:15] -->` to include an inclusiv
 The theme provides `split`, `code-layout`, `panel`, `annotated`, `formula`, `figure`, and `delta` classes for compact slides that place explanations beside live code. Inline SVG diagrams and KaTeX equations render in both browser and PDF output.
 
 The Marp preview watches the theme CSS as well as the generated Markdown. Use `section.classname` for slide-level styles; a bare `.classname` selector is scoped to descendants of the slide by Marp.
+
+The pinned standalone Mac binary targets Apple Silicon. On Intel Macs, install Node.js 18+ and `npm install -g @marp-team/marp-cli@4.5.1`; the CLI can use `marp` from PATH or an explicit `STESLIDE_MARP` path. The installer rejects Intel Macs before downloading an incompatible binary.
