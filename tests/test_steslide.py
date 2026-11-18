@@ -110,6 +110,21 @@ class BuildTests(unittest.TestCase):
         output = slides.build(self.project, "lecture-02")
         self.assertEqual(slides.body(output), '# Another lecture')
 
+    def test_separate_code_directory_is_included_and_watched(self):
+        folder = self.project / "code/chapter-01"
+        folder.mkdir(parents=True)
+        source = folder / "agent.py"
+        source.write_text('def hello():\n    return 1\n', encoding="utf-8")
+        (self.chapter / "section-01.md").write_text('<!-- code: @code/chapter-01/agent.py#hello -->', encoding="utf-8")
+        before = slides.signature(self.project)
+        self.assertIn('return 1', slides.build(self.project).read_text())
+        source.write_text('def hello():\n    return 22\n', encoding="utf-8")
+        self.assertNotEqual(before, slides.signature(self.project))
+        self.assertIn('return 22', slides.build(self.project).read_text())
+        (self.chapter / "section-01.md").write_text('<!-- code: @code/../secret.py -->', encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "inside"):
+            slides.build(self.project)
+
 
 if __name__ == "__main__":
     unittest.main()

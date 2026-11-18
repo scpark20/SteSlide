@@ -19,14 +19,14 @@ A coding assistant must have access to the project files to edit them through ch
 ```text
 project/
 ├── tools/steslide/                   # Shared tool submodule
+├── code/chapter-01/agent.py          # Runnable source, separate from slides
 ├── steslide.json                     # Slide configuration
 └── lectures/                        # One lecture
     ├── intro.md                     # Editable introduction
     ├── lecture.md                   # Generated full deck
     ├── chapter-01/
     │   ├── intro.md                 # Chapter introduction
-    │   ├── agent.py                 # Runnable source code
-    │   ├── section-01.md            # Section content
+        │   ├── section-01.md            # Section content
     │   └── chapter.md               # Generated chapter deck
     └── .build/                      # Browser preview and exports
 ```
@@ -63,9 +63,9 @@ For a project-specific theme, add a CSS file to the consuming project and set `t
 Add a directive to a section Markdown file:
 
 ```html
-<!-- code: agent.py#call_model -->
+<!-- code: @code/chapter-02/agent.py#call_model -->
 ```
 
-The generator extracts the named function, class, or assignment, including nested node functions, and renders it as a Python code block. Omit `#call_model` to include the whole file. Paths must point to Python files within the section directory. Python source edits also trigger rebuilds, so slides stay synchronized with runnable code.
+The generator extracts the named function, class, or assignment, including nested node functions, and renders it as a Python code block. Omit `#call_model` to include the whole file. `@code/` resolves inside the separate code directory configured by the `code` setting (default: `code/`). Plain relative paths remain supported inside the section directory. References cannot escape their allowed directory. Python source edits also trigger rebuilds, so slides stay synchronized with runnable code.
 
 Use `<!-- _class: code -->` on code-heavy slides. Edit the Markdown directives and Python source; generated parent decks contain the expanded code for both browser and VS Code previews.

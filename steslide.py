@@ -16,7 +16,7 @@ import time
 
 TOOL = Path(__file__).resolve().parent
 DEFAULTS = {"lectures": "lectures", "theme": "steslide", "size": "16:9",
-            "paginate": False, "math": "katex"}
+            "paginate": False, "math": "katex", "code": "code"}
 
 
 def settings(project):
@@ -25,6 +25,8 @@ def settings(project):
     root = (project / config["lectures"]).resolve()
     if not root.is_relative_to(project):
         raise ValueError("lectures must be inside the project")
+    if not (project / config["code"]).resolve().is_relative_to(project):
+        raise ValueError("code must be inside the project")
     theme = (project / config["theme_file"]).resolve() if config.get("theme_file") else TOOL / "theme.css"
     if not theme.is_file():
         raise ValueError(f"Theme not found: {theme}")
@@ -54,7 +56,7 @@ def source_files(lecture):
     return files
 
 
-def body(path):
+def body(path, code_root=None):
     if not path.exists() and path.name == "intro.md":
         return ""
     text = path.read_text(encoding="utf-8-sig")
@@ -68,9 +70,15 @@ def body(path):
             raise ValueError(f"Unclosed YAML front matter: {path}")
     def include(match):
         filename, _, symbol = match.group(1).partition("#")
-        source = (path.parent / filename).resolve()
-        if source.suffix != ".py" or not source.is_relative_to(path.parent.resolve()):
-            raise ValueError(f"Code include must be a Python file inside {path.parent}")
+        allowed = path.parent.resolve()
+        if filename.startswith("@code/"):
+            if code_root is None:
+                raise ValueError("@code requires a configured code directory")
+            allowed = code_root.resolve()
+            filename = filename.removeprefix("@code/")
+        source = (allowed / filename).resolve()
+        if source.suffix != ".py" or not source.is_relative_to(allowed):
+            raise ValueError(f"Code include must be a Python file inside {allowed}")
         code = source.read_text(encoding="utf-8")
         if symbol:
             try:
@@ -107,15 +115,16 @@ def write_changed(path, content):
 def build(project, name=None):
     config, root, _ = settings(project)
     lecture = lecture_path(root, name)
+    code_root = (project / config["code"]).resolve()
     output = root / ".build"
     if lecture != root:
         output /= lecture.name
-    parts = [body(lecture / "intro.md")]
+    parts = [body(lecture / "intro.md", code_root)]
     pending = {}
     expected = set()
     for chapter in chapters(lecture):
-        contents = [body(chapter / "intro.md")]
-        contents += [body(path) for path in sorted(chapter.glob("section-*.md"))]
+        contents = [body(chapter / "intro.md", code_root)]
+        contents += [body(path, code_root) for path in sorted(chapter.glob("section-*.md"))]
         text = deck(contents, config)
         pending[chapter / "chapter.md"] = text
         target = output / f"{chapter.name}.md"
@@ -135,9 +144,11 @@ def build(project, name=None):
 
 
 def signature(project, name=None):
-    _, root, theme = settings(project)
+    config, root, theme = settings(project)
     lecture = lecture_path(root, name)
-    paths = [project / "steslide.json", theme, *source_files(lecture), *sorted(lecture.rglob("*.py"))]
+    code_root = (project / config["code"]).resolve()
+    paths = [project / "steslide.json", theme, *source_files(lecture),
+             *sorted(lecture.rglob("*.py")), *sorted(code_root.rglob("*.py"))]
     result = []
     for path in paths:
         stat = path.stat() if path.exists() else None
