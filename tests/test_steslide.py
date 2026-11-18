@@ -125,6 +125,17 @@ class BuildTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "inside"):
             slides.build(self.project)
 
+    def test_function_excerpt_is_exact_and_checks_bounds(self):
+        (self.chapter / "agent.py").write_text('def hello():\n    first = 1\n    second = 2\n    return first + second\n', encoding="utf-8")
+        section = self.chapter / "section-01.md"
+        section.write_text('<!-- code: agent.py#hello[2:3] -->', encoding="utf-8")
+        content = slides.build(self.project).read_text()
+        self.assertIn('```python\nfirst = 1\nsecond = 2\n```', content)
+        self.assertNotIn('return first', content)
+        section.write_text('<!-- code: agent.py#hello[0:8] -->', encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "out of range"):
+            slides.build(self.project)
+
 
 if __name__ == "__main__":
     unittest.main()

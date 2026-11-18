@@ -81,6 +81,10 @@ def body(path, code_root=None):
             raise ValueError(f"Code include must be a Python file inside {allowed}")
         code = source.read_text(encoding="utf-8")
         if symbol:
+            selection = re.fullmatch(r"([A-Za-z_]\w*)(?:\[(\d+):(\d+)\])?", symbol)
+            if selection is None:
+                raise ValueError(f"Invalid Python selection: {symbol}")
+            symbol, first, last = selection.groups()
             try:
                 nodes = ast.walk(ast.parse(code))
             except SyntaxError as error:
@@ -91,6 +95,12 @@ def body(path, code_root=None):
             if node is None:
                 raise ValueError(f"Python symbol not found: {source}#{symbol}")
             code = textwrap.dedent("\n".join(code.splitlines()[node.lineno - 1:node.end_lineno]))
+            if first is not None:
+                first, last = int(first), int(last)
+                lines = code.splitlines()
+                if not 1 <= first <= last <= len(lines):
+                    raise ValueError(f"Python selection out of range: {source}#{symbol}[{first}:{last}]")
+                code = textwrap.dedent("\n".join(lines[first - 1:last]))
         return "```python\n" + code.rstrip() + "\n```"
     return re.sub(r"<!--\s*code:\s*(\S+)\s*-->", include, text).strip()
 

@@ -69,3 +69,11 @@ Add a directive to a section Markdown file:
 The generator extracts the named function, class, or assignment, including nested node functions, and renders it as a Python code block. Omit `#call_model` to include the whole file. `@code/` resolves inside the separate code directory configured by the `code` setting (default: `code/`). Plain relative paths remain supported inside the section directory. References cannot escape their allowed directory. Python source edits also trigger rebuilds, so slides stay synchronized with runnable code.
 
 Use `<!-- _class: code -->` on code-heavy slides. Edit the Markdown directives and Python source; generated parent decks contain the expanded code for both browser and VS Code previews.
+
+## Focused code excerpts
+
+Use `<!-- code: @code/chapter-04/agent.py#main[7:15] -->` to include an inclusive line range within a function. Line 1 is its definition. Out-of-range selections fail the build and leave the last valid preview intact. Keep the surrounding caption explicit when showing an excerpt.
+
+The theme provides `split`, `code-layout`, `panel`, `annotated`, `formula`, `figure`, and `delta` classes for compact slides that place explanations beside live code. Inline SVG diagrams and KaTeX equations render in both browser and PDF output.
+
+The Marp preview watches the theme CSS as well as the generated Markdown. Use `section.classname` for slide-level styles; a bare `.classname` selector is scoped to descendants of the slide by Marp.
