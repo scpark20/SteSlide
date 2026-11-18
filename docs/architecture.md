@@ -66,6 +66,6 @@ Add a directive to a section Markdown file:
 <!-- code: agent.py#call_model -->
 ```
 
-The generator extracts the named function or class, including nested node functions, and renders it as a Python code block. Omit `#call_model` to include the whole file. Paths must point to Python files within the section directory. Python source edits also trigger rebuilds, so slides stay synchronized with runnable code.
+The generator extracts the named function, class, or assignment, including nested node functions, and renders it as a Python code block. Omit `#call_model` to include the whole file. Paths must point to Python files within the section directory. Python source edits also trigger rebuilds, so slides stay synchronized with runnable code.
 
 Use `<!-- _class: code -->` on code-heavy slides. Edit the Markdown directives and Python source; generated parent decks contain the expanded code for both browser and VS Code previews.

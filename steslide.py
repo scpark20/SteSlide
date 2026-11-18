@@ -77,7 +77,9 @@ def body(path):
                 nodes = ast.walk(ast.parse(code))
             except SyntaxError as error:
                 raise ValueError(f"Invalid Python include: {source}") from error
-            node = next((node for node in nodes if getattr(node, "name", None) == symbol), None)
+            node = next((node for node in nodes if getattr(node, "name", None) == symbol
+                         or any(isinstance(target, ast.Name) and target.id == symbol
+                                for target in getattr(node, "targets", []))), None)
             if node is None:
                 raise ValueError(f"Python symbol not found: {source}#{symbol}")
             code = textwrap.dedent("\n".join(code.splitlines()[node.lineno - 1:node.end_lineno]))

@@ -96,6 +96,13 @@ class BuildTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "inside"):
             slides.build(self.project)
 
+    def test_nested_node_and_tool_schema_can_be_included(self):
+        (self.chapter / "agent.py").write_text('TOOLS = [{"type": "function"}]\ndef graph():\n    def assistant():\n        return 42\n', encoding="utf-8")
+        (self.chapter / "section-01.md").write_text('<!-- code: agent.py#TOOLS -->\n<!-- code: agent.py#assistant -->', encoding="utf-8")
+        content = slides.build(self.project).read_text()
+        self.assertIn('TOOLS = [{"type": "function"}]', content)
+        self.assertIn('```python\ndef assistant():\n    return 42', content)
+
     def test_explicit_multiple_lecture_layout_still_works(self):
         nested = self.lecture / "lecture-02"
         nested.mkdir()
